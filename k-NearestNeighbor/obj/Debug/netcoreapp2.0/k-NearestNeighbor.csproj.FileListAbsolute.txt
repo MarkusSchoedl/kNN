@@ -1,0 +1,11 @@
+c:\users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.csprojResolveAssemblyReference.cache
+c:\users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.csproj.CoreCompileInputs.cache
+c:\users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.AssemblyInfoInputs.cache
+c:\users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.AssemblyInfo.cs
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\bin\Debug\netcoreapp2.0\k-NearestNeighbor.deps.json
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\bin\Debug\netcoreapp2.0\k-NearestNeighbor.runtimeconfig.json
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\bin\Debug\netcoreapp2.0\k-NearestNeighbor.runtimeconfig.dev.json
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\bin\Debug\netcoreapp2.0\k-NearestNeighbor.dll
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\bin\Debug\netcoreapp2.0\k-NearestNeighbor.pdb
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.dll
+C:\Users\marku\source\repos\k-NearestNeighbor\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.pdb
