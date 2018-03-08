@@ -1,0 +1,11 @@
+!Libs/BIF-SWE2.Interfaces.dll
+
+bin
+obj
+*.suo
+deploy/
+packages/
+/PicDB/*.user
+*.lock
+.vs/
+BIF-SWE2-Work.sln
