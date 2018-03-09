@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Diagnostics;
 using System.Globalization;
 
 namespace k_NearestNeighbor
@@ -18,6 +19,9 @@ namespace k_NearestNeighbor
 
         // Key: Chunk-Id, Value: WineAttributes
         private Dictionary<int, List<WineAttributes>> _Chunks = new Dictionary<int, List<WineAttributes>>();
+
+        // Our Result
+        private int[,] _ConfusionMatrix;
         #endregion
 
         #region Construcor
@@ -31,6 +35,8 @@ namespace k_NearestNeighbor
                 _TotalWineData.Add(i, new List<WineAttributes>());
                 _DoubleWineData.Add(i, new List<WineAttributes>());
             }
+
+            _ConfusionMatrix = new int[10, 10];
         }
         #endregion
 
@@ -42,34 +48,111 @@ namespace k_NearestNeighbor
 
         public void Start_kNN(int k)
         {
+            Console.WriteLine("Calculating...");
+
             #region Calculate Chunk Size
             SplitDataIntoChunks(k);
             #endregion
 
             #region Heuristic
-            foreach(var testingChunk in _Chunks.Values)
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            int wrongWines = 0;
+            int rightWines = 0;
+            foreach (var testingChunk in _Chunks)
             {
-                foreach(var nnChunk in _Chunks.Values.Where(x => !x.Equals(testingChunk)))
+                foreach (var unknownWine in testingChunk.Value)
                 {
-                    WineAttributes nearestNeighbor;
+                    WineAttributes nearestNeighbor = null;
                     double lowestDistance = double.MaxValue;
 
-                    foreach(var guessWine in testingChunk)
+                    foreach (var nnChunk in _Chunks.Where(x => testingChunk.Key != x.Key))
                     {
-                        foreach(var learnWine in nnChunk)
+                        foreach (var knownWine in nnChunk.Value)
                         {
-                            double currDistance = CalculateDistance(guessWine, learnWine);
+                            double currDistance = unknownWine.GetEuclideanDistance(knownWine);
                             if (currDistance < lowestDistance)
                             {
                                 lowestDistance = currDistance;
-                                nearestNeighbor = learnWine;
+                                nearestNeighbor = knownWine;
                             }
                         }
                     }
 
-                    Console.WriteLine("Nearest Neighbor Distance: " + lowestDistance);
+                    _ConfusionMatrix[unknownWine.Quality, nearestNeighbor.Quality]++;
+
+                    if (_LoggingEnabled)
+                    {
+                        Console.WriteLine("Nearest Neighbor Distance: " + lowestDistance + "\nUnknown: " + unknownWine.ToString() + "\nKnown  : " + nearestNeighbor.ToString());
+                    }
+
+                    if (nearestNeighbor.Quality != unknownWine.Quality)
+                    {
+                        wrongWines++;
+                    }
+                    else
+                    {
+                        rightWines++;
+                    }
                 }
             }
+
+            stopWatch.Stop();
+            TimeSpan ts = stopWatch.Elapsed;
+            string elapsedTime = String.Format("{0:00}.{1:00}", ts.Seconds, ts.Milliseconds / 10);
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n\nElapsed Time: " + elapsedTime + " sec\n\n");
+
+            //for (int j = 0, i = 0; i < 10; ++j, i = j%10 == 0 ? i+1 : i, j = j % 10 )
+            //{
+            //    Console.Write(_ConfusionMatrix[i,j].ToString("D3") + " ");
+            //}
+
+            Console.WriteLine("Confusion Matrix:");
+
+            for (int i = 0; i < 10; i++)
+            {
+                // Print Axis Label
+                if (i == 0)
+                {
+                    Console.Write("\n\n");
+                    Console.Write("           ");
+                    for (int j = 0; j < 10; j++)
+                    {
+                        Console.Write(" " + j + "  ");
+                    }
+                    Console.Write("\n");
+                }
+
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("Quality " + i + ": ");
+                for (int j = 0; j < 10; j++)
+                {
+                    if (i == j)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Magenta;
+                    }
+                    else if (_ConfusionMatrix[i, j] != 0)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+
+                    Console.Write(_ConfusionMatrix[i, j].ToString("D3") + " ");
+                }
+
+                Console.Write("\n");
+            }
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n Wrong Wines: " + wrongWines);
+            Console.WriteLine(" Right Wines: " + rightWines);
+            Console.WriteLine(" Accuracy: " + ((rightWines / (float)(wrongWines + rightWines)) * 100.0).ToString("0.00") + "%");
             #endregion
         }
         #endregion
@@ -79,7 +162,6 @@ namespace k_NearestNeighbor
         {
             try
             {
-                int quality = -1;
                 string line;
 
                 // Read the file and display it line by line.  
@@ -88,15 +170,15 @@ namespace k_NearestNeighbor
                     sr.ReadLine(); //Throw away header
                     while ((line = sr.ReadLine()) != null)
                     {
-                        WineAttributes attr = ParseAttributes(line, out quality);
+                        WineAttributes attr = ParseAttributes(line);
 
-                        if (_TotalWineData[quality].Where(x => x.Equals(attr)).Count() == 0)
+                        if (_TotalWineData[attr.Quality].Where(x => x.Equals(attr)).Count() == 0)
                         {
-                            _TotalWineData[quality].Add(attr);
+                            _TotalWineData[attr.Quality].Add(attr);
                         }
                         else
                         {
-                            _DoubleWineData[quality].Add(attr);
+                            _DoubleWineData[attr.Quality].Add(attr);
                         }
                     }
                 }
@@ -120,7 +202,7 @@ namespace k_NearestNeighbor
             return true;
         }
 
-        private WineAttributes ParseAttributes(string line, out int quality)
+        private WineAttributes ParseAttributes(string line)
         {
             int i = 0;
             WineAttributes attribute = new WineAttributes();
@@ -133,62 +215,24 @@ namespace k_NearestNeighbor
             var lst = line.Split(';');
             foreach (var item in fields)
             {
-                item.SetValue(attribute, float.Parse(lst[i], NumberStyles.Any, ci));
+                if (item.FieldType == typeof(float))
+                    item.SetValue(attribute, float.Parse(lst[i], NumberStyles.Any, ci));
                 i++;
             }
 
-            quality = int.Parse(lst.Last());
+            attribute.Quality = int.Parse(lst.Last());
 
             return attribute;
         }
         #endregion
 
-        #region Maths
-        private static List<int> FindFactors(int num)
-        {
-            List<int> result = new List<int>();
-
-            // Take out the 2s.
-            while (num % 2 == 0)
-            {
-                result.Add(2);
-                num /= 2;
-            }
-
-            // Take out other primes.
-            int factor = 3;
-            while (factor * factor <= num)
-            {
-                if (num % factor == 0)
-                {
-                    // This is a factor.
-                    result.Add(factor);
-                    num /= factor;
-                }
-                else
-                {
-                    // Go to the next odd number.
-                    factor += 2;
-                }
-            }
-
-            // If num is not 1, then whatever is left is prime.
-            if (num > 1) result.Add(num);
-
-            return result;
-        }
-        #endregion
-
-        private double CalculateDistance(WineAttributes guessWine, WineAttributes learnWine)
-        {
-            double result=0;
-            foreach(var field in typeof(WineAttributes).GetFields())
-            {
-                result += Math.Pow((float)field.GetValue(guessWine) - (float)field.GetValue(learnWine), 2);
-            }
-
-            return Math.Sqrt(result);
-        }
+        //private double CalculateDistance(WineAttributes guessWine, WineAttributes learnWine)
+        //{
+        //    foreach (var field in typeof(WineAttributes).GetFields())
+        //    {
+        //        result += Math.Pow((float)field.GetValue(guessWine) - (float)field.GetValue(learnWine), 2);
+        //    }
+        //}
 
         private bool SplitDataIntoChunks(int k)
         {
@@ -265,6 +309,28 @@ namespace k_NearestNeighbor
         public float Sulphates = 1.0f;
         public float Alcohol = 1.0f;
 
+        public int Quality = 0;
+
+
+        public double GetEuclideanDistance(WineAttributes other)
+        {
+            double result = 0;
+
+            result = Math.Pow(other.Alcohol - Alcohol, 2);
+            result += Math.Pow(other.Chlorides - Chlorides, 2);
+            result += Math.Pow(other.CitricAcid - CitricAcid, 2);
+            result += Math.Pow(other.Density - Density, 2);
+            result += Math.Pow(other.FixedAcidity - FixedAcidity, 2);
+            result += Math.Pow(other.FreeSulfurDioxide - FreeSulfurDioxide, 2);
+            result += Math.Pow(other.PH - PH, 2);
+            result += Math.Pow(other.ResidualSugar - ResidualSugar, 2);
+            result += Math.Pow(other.Sulphates - Sulphates, 2);
+            result += Math.Pow(other.TotalSulfurDioxide - TotalSulfurDioxide, 2);
+            result += Math.Pow(other.VolatileAcidity - VolatileAcidity, 2);
+
+            return Math.Sqrt(result);
+        }
+
         public bool Equals(WineAttributes y)
         {
             return Alcohol == y.Alcohol &&
@@ -278,6 +344,12 @@ namespace k_NearestNeighbor
                     Sulphates == y.Sulphates &&
                     TotalSulfurDioxide == y.TotalSulfurDioxide &&
                     VolatileAcidity == y.VolatileAcidity;
+        }
+
+        public override string ToString()
+        {
+            return FixedAcidity + " - " + VolatileAcidity + " - " + CitricAcid + " - " + ResidualSugar + " - " + Chlorides + " - " + FreeSulfurDioxide
+                + " - " + TotalSulfurDioxide + " - " + Density + " - " + PH + " - " + Sulphates + " - " + Alcohol;
         }
     }
 }
