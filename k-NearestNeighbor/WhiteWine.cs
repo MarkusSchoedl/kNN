@@ -41,11 +41,18 @@ namespace k_NearestNeighbor
         #endregion
 
         #region Methods
+        /// <summary>
+        /// Enables the Logging Feature of the Algorithm.
+        /// </summary>
         public void EnableLogging()
         {
             _LoggingEnabled = true;
         }
 
+        /// <summary>
+        /// Starts the k-NearestNeighbor Algorithm using the EuclideanDistance Method.
+        /// </summary>
+        /// <param name="k">The number of Chunks to use.</param>
         public void Start_kNN(int k)
         {
             Console.WriteLine("Calculating...");
@@ -62,11 +69,12 @@ namespace k_NearestNeighbor
             int rightWines = 0;
             foreach (var testingChunk in _Chunks)
             {
-                foreach (var unknownWine in testingChunk.Value)
+                foreach (var unknownWine in testingChunk.Value) // For each wine, which is not part of the current Chunk
                 {
                     WineAttributes nearestNeighbor = null;
                     double lowestDistance = double.MaxValue;
 
+                    // Get NearestNeighbor
                     foreach (var nnChunk in _Chunks.Where(x => testingChunk.Key != x.Key))
                     {
                         foreach (var knownWine in nnChunk.Value)
@@ -80,6 +88,7 @@ namespace k_NearestNeighbor
                         }
                     }
 
+                    // Add the current guess to the result
                     _ConfusionMatrix[unknownWine.Quality, nearestNeighbor.Quality]++;
 
                     if (_LoggingEnabled)
@@ -102,13 +111,23 @@ namespace k_NearestNeighbor
             TimeSpan ts = stopWatch.Elapsed;
             string elapsedTime = String.Format("{0:00}.{1:00}", ts.Seconds, ts.Milliseconds / 10);
 
+            PrintResult(rightWines, wrongWines, elapsedTime);
+            #endregion
+        }
+
+        /// <summary>
+        /// Prints all the relevant data into a beautiful matrix.
+        /// </summary>
+        /// <param name="rightWines">The amount of right wines</param>
+        /// <param name="wrongWines">The amount of wrong wines</param>
+        /// <param name="elapsedTime">The elapsed Time as string.</param>
+        private void PrintResult(int rightWines, int wrongWines, string elapsedTime)
+        {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\n\nElapsed Time: " + elapsedTime + " sec\n\n");
 
             //for (int j = 0, i = 0; i < 10; ++j, i = j%10 == 0 ? i+1 : i, j = j % 10 )
-            //{
-            //    Console.Write(_ConfusionMatrix[i,j].ToString("D3") + " ");
-            //}
+            //{}
 
             Console.WriteLine("Confusion Matrix:");
 
@@ -136,7 +155,7 @@ namespace k_NearestNeighbor
                     }
                     else if (_ConfusionMatrix[i, j] != 0)
                     {
-                        Console.ForegroundColor = ConsoleColor.Gray;
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
                     }
                     else
                     {
@@ -153,87 +172,13 @@ namespace k_NearestNeighbor
             Console.WriteLine("\n Wrong Wines: " + wrongWines);
             Console.WriteLine(" Right Wines: " + rightWines);
             Console.WriteLine(" Accuracy: " + ((rightWines / (float)(wrongWines + rightWines)) * 100.0).ToString("0.00") + "%");
-            #endregion
-        }
-        #endregion
-
-        #region File Parsing 
-        public bool ReadWineData(string filename)
-        {
-            try
-            {
-                string line;
-
-                // Read the file and display it line by line.  
-                using (StreamReader sr = new StreamReader(filename))
-                {
-                    sr.ReadLine(); //Throw away header
-                    while ((line = sr.ReadLine()) != null)
-                    {
-                        WineAttributes attr = ParseAttributes(line);
-
-                        if (_TotalWineData[attr.Quality].Where(x => x.Equals(attr)).Count() == 0)
-                        {
-                            _TotalWineData[attr.Quality].Add(attr);
-                        }
-                        else
-                        {
-                            _DoubleWineData[attr.Quality].Add(attr);
-                        }
-                    }
-                }
-            }
-            catch (FileNotFoundException)
-            {
-                return false;
-            }
-
-            if (_LoggingEnabled)
-            {
-                Console.WriteLine("Found " + _TotalWineData.Values.Sum(list => list.Count) + " unique wine datasets.");
-                Console.WriteLine("Found " + _DoubleWineData.Values.Sum(list => list.Count) + " redundant wine datasets.\n");
-
-                foreach (var dataSet in _TotalWineData.Where(x => x.Value.Count() > 0))
-                {
-                    Console.WriteLine("quality: " + dataSet.Key + " - wines: " + dataSet.Value.Count());
-                }
-            }
-
-            return true;
         }
 
-        private WineAttributes ParseAttributes(string line)
-        {
-            int i = 0;
-            WineAttributes attribute = new WineAttributes();
-
-            CultureInfo ci = (CultureInfo)CultureInfo.CurrentCulture.Clone();
-            ci.NumberFormat.CurrencyDecimalSeparator = ".";
-
-            var fields = typeof(WineAttributes).GetFields();
-
-            var lst = line.Split(';');
-            foreach (var item in fields)
-            {
-                if (item.FieldType == typeof(float))
-                    item.SetValue(attribute, float.Parse(lst[i], NumberStyles.Any, ci));
-                i++;
-            }
-
-            attribute.Quality = int.Parse(lst.Last());
-
-            return attribute;
-        }
-        #endregion
-
-        //private double CalculateDistance(WineAttributes guessWine, WineAttributes learnWine)
-        //{
-        //    foreach (var field in typeof(WineAttributes).GetFields())
-        //    {
-        //        result += Math.Pow((float)field.GetValue(guessWine) - (float)field.GetValue(learnWine), 2);
-        //    }
-        //}
-
+        /// <summary>
+        /// Splits the <see cref="_TotalWineData"/> into k Chunks for calculation.
+        /// </summary>
+        /// <param name="k">The amount of Chunks to split into</param>
+        /// <returns>True if all Data was split, False otherwise.</returns>
         private bool SplitDataIntoChunks(int k)
         {
 
@@ -293,9 +238,98 @@ namespace k_NearestNeighbor
             int numOfChunkWines = _Chunks.Values.Sum(list => list.Count);
             return numOfTotalWines == numOfChunkWines;
         }
+        #endregion
+
+        #region File Parsing 
+        /// <summary>
+        /// Reads all the Data from the CSV file and parses it into the Dictionaries.
+        /// </summary>
+        /// <param name="filename">The path to the File including the File Extension.</param>
+        /// <returns>True if parsing was successful, false otherwise</returns>
+        public bool ReadWineData(string filename)
+        {
+            try
+            {
+                string line;
+
+                // Read the file and display it line by line.  
+                using (StreamReader sr = new StreamReader(filename))
+                {
+                    sr.ReadLine(); //Throw away header
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        WineAttributes attr = ParseAttributes(line);
+
+                        if (_TotalWineData[attr.Quality].Where(x => x.Equals(attr)).Count() == 0)
+                        {
+                            _TotalWineData[attr.Quality].Add(attr);
+                        }
+                        else
+                        {
+                            _DoubleWineData[attr.Quality].Add(attr);
+                        }
+                    }
+                }
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+
+            if (_LoggingEnabled)
+            {
+                Console.WriteLine("Found " + _TotalWineData.Values.Sum(list => list.Count) + " unique wine datasets.");
+                Console.WriteLine("Found " + _DoubleWineData.Values.Sum(list => list.Count) + " redundant wine datasets.\n");
+
+                foreach (var dataSet in _TotalWineData.Where(x => x.Value.Count() > 0))
+                {
+                    Console.WriteLine("quality: " + dataSet.Key + " - wines: " + dataSet.Value.Count());
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Parses all the Attributes out of one Line.
+        /// </summary>
+        /// <param name="line">The string representing the current line.</param>
+        /// <returns>An object, which holds all the Wine's Data.</returns>
+        private WineAttributes ParseAttributes(string line)
+        {
+            int i = 0;
+            WineAttributes attribute = new WineAttributes();
+
+            CultureInfo ci = (CultureInfo)CultureInfo.CurrentCulture.Clone();
+            ci.NumberFormat.CurrencyDecimalSeparator = ".";
+
+            var fields = typeof(WineAttributes).GetFields();
+
+            var lst = line.Split(';');
+            foreach (var item in fields)
+            {
+                if (item.FieldType == typeof(float))
+                    item.SetValue(attribute, float.Parse(lst[i], NumberStyles.Any, ci));
+                i++;
+            }
+
+            attribute.Quality = int.Parse(lst.Last());
+
+            return attribute;
+        }
+        #endregion
+        
+        // Erased because TOO SLOW
+        //private double CalculateDistance(WineAttributes guessWine, WineAttributes learnWine)
+        //{
+        //    foreach (var field in typeof(WineAttributes).GetFields())
+        //    {
+        //        result += Math.Pow((float)field.GetValue(guessWine) - (float)field.GetValue(learnWine), 2);
+        //    }
+        //}
     }
 
-    class WineAttributes
+    internal class WineAttributes
     {
         public float FixedAcidity = 1.0f;
         public float VolatileAcidity = 1.0f;
@@ -315,18 +349,30 @@ namespace k_NearestNeighbor
         public double GetEuclideanDistance(WineAttributes other)
         {
             double result = 0;
+            double temp = 0;
 
-            result = Math.Pow(other.Alcohol - Alcohol, 2);
-            result += Math.Pow(other.Chlorides - Chlorides, 2);
-            result += Math.Pow(other.CitricAcid - CitricAcid, 2);
-            result += Math.Pow(other.Density - Density, 2);
-            result += Math.Pow(other.FixedAcidity - FixedAcidity, 2);
-            result += Math.Pow(other.FreeSulfurDioxide - FreeSulfurDioxide, 2);
-            result += Math.Pow(other.PH - PH, 2);
-            result += Math.Pow(other.ResidualSugar - ResidualSugar, 2);
-            result += Math.Pow(other.Sulphates - Sulphates, 2);
-            result += Math.Pow(other.TotalSulfurDioxide - TotalSulfurDioxide, 2);
-            result += Math.Pow(other.VolatileAcidity - VolatileAcidity, 2);
+            temp = other.Alcohol - Alcohol;
+            result = temp * temp;
+            temp = other.Chlorides - Chlorides;
+            result += temp * temp;
+            temp = other.CitricAcid - CitricAcid;
+            result += temp * temp;
+            temp = other.Density - Density;
+            result += temp * temp;
+            temp = other.FixedAcidity - FixedAcidity;
+            result += temp * temp;
+            temp = other.FreeSulfurDioxide - FreeSulfurDioxide;
+            result += temp * temp;
+            temp = other.PH - PH;
+            result += temp * temp;
+            temp = other.ResidualSugar - ResidualSugar;
+            result += temp * temp;
+            temp = other.Sulphates - Sulphates;
+            result += temp * temp;
+            temp = other.TotalSulfurDioxide - TotalSulfurDioxide;
+            result += temp * temp;
+            temp = other.VolatileAcidity - VolatileAcidity;
+            result += temp * temp;
 
             return Math.Sqrt(result);
         }
