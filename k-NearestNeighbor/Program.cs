@@ -7,7 +7,7 @@ namespace k_NearestNeighbor
         static void Main(string[] args)
         {
             WhiteWine_kNN kNN = new WhiteWine_kNN();
-            if (kNN.ReadWineData(@"C:\Users\marku\Dropbox\FH\MLE\white_wine\winequality-white.csv"))
+            if (kNN.ReadWineData(@"Data\winequality-white.csv"))
             {
                 if (UserWantsLogging())
                 {
