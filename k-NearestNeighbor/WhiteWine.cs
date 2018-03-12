@@ -4,6 +4,7 @@ using System.Linq;
 using System.IO;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
 
 namespace k_NearestNeighbor
 {
@@ -20,8 +21,12 @@ namespace k_NearestNeighbor
         // Key: Chunk-Id, Value: WineAttributes
         private Dictionary<int, List<WineAttributes>> _Chunks = new Dictionary<int, List<WineAttributes>>();
 
-        // Our Result
-        private int[,] _ConfusionMatrix;
+        public enum CalculationMethod
+        {
+            EuclideanDistance = 1,
+            ManhattanDistance,
+            CorrectedEuclideanDistance
+        }
         #endregion
 
         #region Construcor
@@ -35,8 +40,6 @@ namespace k_NearestNeighbor
                 _TotalWineData.Add(i, new List<WineAttributes>());
                 _DoubleWineData.Add(i, new List<WineAttributes>());
             }
-
-            _ConfusionMatrix = new int[10, 10];
         }
         #endregion
 
@@ -53,20 +56,33 @@ namespace k_NearestNeighbor
         /// Starts the k-NearestNeighbor Algorithm using the EuclideanDistance Method.
         /// </summary>
         /// <param name="k">The number of Chunks to use.</param>
-        public void Start_kNN(int k)
+        public void Start_kNN(int k, CalculationMethod method = CalculationMethod.EuclideanDistance)
         {
-            Console.WriteLine("Calculating...");
+            DistanceCalculator calculationMethod = new EuclideanDistanceStrategy();
+            if (method == CalculationMethod.ManhattanDistance)
+            {
+                calculationMethod = new ManhattanDistanceStrategy();
+            }
+            else if (method == CalculationMethod.CorrectedEuclideanDistance)
+            {
+                calculationMethod = new CorrectedEuclideanStrategy();
+            }
+
+            Console.WriteLine("Calculating with method: {0} ...", method.ToString());
 
             #region Calculate Chunk Size
             SplitDataIntoChunks(k);
             #endregion
 
             #region Heuristic
+            int wrongWines = 0;
+            int rightWines = 0;
+
+            // The Result
+            int[,] confusionMatrix = new int[10, 10];
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            int wrongWines = 0;
-            int rightWines = 0;
             foreach (var testingChunk in _Chunks)
             {
                 foreach (var unknownWine in testingChunk.Value) // For each wine, which is not part of the current Chunk
@@ -79,7 +95,8 @@ namespace k_NearestNeighbor
                     {
                         foreach (var knownWine in nnChunk.Value)
                         {
-                            double currDistance = unknownWine.GetEuclideanDistance(knownWine);
+                            double currDistance = calculationMethod.GetDistance(knownWine, unknownWine);
+
                             if (currDistance < lowestDistance)
                             {
                                 lowestDistance = currDistance;
@@ -89,7 +106,7 @@ namespace k_NearestNeighbor
                     }
 
                     // Add the current guess to the result
-                    _ConfusionMatrix[unknownWine.Quality, nearestNeighbor.Quality]++;
+                    confusionMatrix[unknownWine.Quality, nearestNeighbor.Quality]++;
 
                     if (_LoggingEnabled)
                     {
@@ -104,6 +121,7 @@ namespace k_NearestNeighbor
                     {
                         rightWines++;
                     }
+
                 }
             }
 
@@ -111,17 +129,19 @@ namespace k_NearestNeighbor
             TimeSpan ts = stopWatch.Elapsed;
             string elapsedTime = String.Format("{0:00}.{1:00}", ts.Seconds, ts.Milliseconds / 10);
 
-            PrintResult(rightWines, wrongWines, elapsedTime);
+            PrintResult(confusionMatrix, rightWines, wrongWines, elapsedTime);
+
             #endregion
         }
 
         /// <summary>
         /// Prints all the relevant data into a beautiful matrix.
         /// </summary>
+        /// <param name="confusionMatrix">The confusion matrix as result.</param>
         /// <param name="rightWines">The amount of right wines</param>
         /// <param name="wrongWines">The amount of wrong wines</param>
         /// <param name="elapsedTime">The elapsed Time as string.</param>
-        private void PrintResult(int rightWines, int wrongWines, string elapsedTime)
+        private void PrintResult(int[,] confusionMatrix, int rightWines, int wrongWines, string elapsedTime)
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\n\nElapsed Time: " + elapsedTime + " sec\n\n");
@@ -153,7 +173,7 @@ namespace k_NearestNeighbor
                     {
                         Console.ForegroundColor = ConsoleColor.Magenta;
                     }
-                    else if (_ConfusionMatrix[i, j] != 0)
+                    else if (confusionMatrix[i, j] != 0)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkGray;
                     }
@@ -162,7 +182,7 @@ namespace k_NearestNeighbor
                         Console.ForegroundColor = ConsoleColor.White;
                     }
 
-                    Console.Write(_ConfusionMatrix[i, j].ToString("D3") + " ");
+                    Console.Write(confusionMatrix[i, j].ToString("D3") + " ");
                 }
 
                 Console.Write("\n");
@@ -318,7 +338,7 @@ namespace k_NearestNeighbor
             return attribute;
         }
         #endregion
-        
+
         // Erased because TOO SLOW
         //private double CalculateDistance(WineAttributes guessWine, WineAttributes learnWine)
         //{
@@ -344,39 +364,7 @@ namespace k_NearestNeighbor
         public float Alcohol = 1.0f;
 
         public int Quality = 0;
-
-
-        public double GetEuclideanDistance(WineAttributes other)
-        {
-            double result = 0;
-            double temp = 0;
-
-            temp = other.Alcohol - Alcohol;
-            result = temp * temp;
-            temp = other.Chlorides - Chlorides;
-            result += temp * temp;
-            temp = other.CitricAcid - CitricAcid;
-            result += temp * temp;
-            temp = other.Density - Density;
-            result += temp * temp;
-            temp = other.FixedAcidity - FixedAcidity;
-            result += temp * temp;
-            temp = other.FreeSulfurDioxide - FreeSulfurDioxide;
-            result += temp * temp;
-            temp = other.PH - PH;
-            result += temp * temp;
-            temp = other.ResidualSugar - ResidualSugar;
-            result += temp * temp;
-            temp = other.Sulphates - Sulphates;
-            result += temp * temp;
-            temp = other.TotalSulfurDioxide - TotalSulfurDioxide;
-            result += temp * temp;
-            temp = other.VolatileAcidity - VolatileAcidity;
-            result += temp * temp;
-
-            return Math.Sqrt(result);
-        }
-
+        
         public bool Equals(WineAttributes y)
         {
             return Alcohol == y.Alcohol &&
@@ -398,4 +386,99 @@ namespace k_NearestNeighbor
                 + " - " + TotalSulfurDioxide + " - " + Density + " - " + PH + " - " + Sulphates + " - " + Alcohol;
         }
     }
+
+    #region StrategyDesignPattern
+    abstract class DistanceCalculator
+    {
+        public abstract double GetDistance(WineAttributes wine1, WineAttributes wine2);
+    }
+    
+    class EuclideanDistanceStrategy : DistanceCalculator
+    {
+        public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
+        {
+            double result = 0;
+            double temp = 0;
+
+            temp = wine1.Alcohol - wine2.Alcohol;
+            result = temp * temp;
+            temp = wine1.Chlorides - wine2.Chlorides;
+            result += temp * temp;
+            temp = wine1.CitricAcid - wine2.CitricAcid;
+            result += temp * temp;
+            temp = wine1.Density - wine2.Density;
+            result += temp * temp;
+            temp = wine1.FixedAcidity - wine2.FixedAcidity;
+            result += temp * temp;
+            temp = wine1.FreeSulfurDioxide - wine2.FreeSulfurDioxide;
+            result += temp * temp;
+            temp = wine1.PH - wine2.PH;
+            result += temp * temp;
+            temp = wine1.ResidualSugar - wine2.ResidualSugar;
+            result += temp * temp;
+            temp = wine1.Sulphates - wine2.Sulphates;
+            result += temp * temp;
+            temp = wine1.TotalSulfurDioxide - wine2.TotalSulfurDioxide;
+            result += temp * temp;
+            temp = wine1.VolatileAcidity - wine2.VolatileAcidity;
+            result += temp * temp;
+
+            return Math.Sqrt(result);
+        }
+    }
+
+    class ManhattanDistanceStrategy : DistanceCalculator
+    {
+        public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
+        {
+            double result = 0;
+
+            result += Math.Abs(wine1.Alcohol - wine2.Alcohol);
+            result += Math.Abs(wine1.Chlorides - wine2.Chlorides);
+            result += Math.Abs(wine1.CitricAcid - wine2.CitricAcid);
+            result += Math.Abs(wine1.Density - wine2.Density);
+            result += Math.Abs(wine1.FixedAcidity - wine2.FixedAcidity);
+            result += Math.Abs(wine1.FreeSulfurDioxide - wine2.FreeSulfurDioxide);
+            result += Math.Abs(wine1.PH - wine2.PH);
+            result += Math.Abs(wine1.ResidualSugar - wine2.ResidualSugar);
+            result += Math.Abs(wine1.Sulphates - wine2.Sulphates);
+            result += Math.Abs(wine1.TotalSulfurDioxide - wine2.TotalSulfurDioxide);
+            result += Math.Abs(wine1.VolatileAcidity - wine2.VolatileAcidity);
+
+            return result;
+        }
+    }
+
+    class CorrectedEuclideanStrategy : DistanceCalculator
+    {
+        public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
+        {
+            // Removed following parameters:
+            // Residual Sugar
+            // Density
+            // Chlorides
+            // Sulphates
+            // Citric Acid
+
+            double result = 0;
+            double temp = 0;
+
+            temp = wine1.Alcohol - wine2.Alcohol;
+            result += temp * temp;
+            temp = wine1.FixedAcidity - wine2.FixedAcidity;
+            result += temp * temp;
+            temp = wine1.FreeSulfurDioxide - wine2.FreeSulfurDioxide;
+            result += temp * temp;
+            temp = wine1.PH - wine2.PH;
+            result += temp * temp;
+            temp = wine1.TotalSulfurDioxide - wine2.TotalSulfurDioxide;
+            result += temp * temp;
+            temp = wine1.VolatileAcidity - wine2.VolatileAcidity;
+            result += temp * temp;
+
+            return Math.Sqrt(result);
+        }
+    }
+
+    #endregion
 }

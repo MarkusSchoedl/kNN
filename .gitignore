@@ -5,7 +5,6 @@ obj
 *.suo
 deploy/
 packages/
-/PicDB/*.user
 *.lock
 .vs/
-BIF-SWE2-Work.sln
+k-NearestNeighbor/obj/

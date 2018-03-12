@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace k_NearestNeighbor
 {
@@ -14,13 +15,46 @@ namespace k_NearestNeighbor
                     kNN.EnableLogging();
                 }
 
-                kNN.Start_kNN(13);
+                WhiteWine_kNN.CalculationMethod method = SelectDistanceMethod();
+
+                kNN.Start_kNN(13, method);
             }
             else
             {
                 Console.WriteLine("Error parsing the file.");
             }
             Console.ReadKey();
+        }
+
+        static WhiteWine_kNN.CalculationMethod SelectDistanceMethod()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Choose a distance calculation method:\n");
+
+                int i = 1;
+                foreach (var method in typeof(WhiteWine_kNN.CalculationMethod).GetEnumNames())
+                {
+                    Console.WriteLine("{0}: {1}", i, method);
+                    i++;
+                }
+
+                string sinput = Console.ReadLine();
+                int input = 0;
+                if (int.TryParse(sinput, out input))
+                {
+                    try
+                    {
+                        Console.Clear();
+                        return (WhiteWine_kNN.CalculationMethod)Enum.GetValues(typeof(WhiteWine_kNN.CalculationMethod)).GetValue(input-1);
+                    }
+                    catch(IndexOutOfRangeException)
+                    {
+                        continue;
+                    }
+                }
+            }
         }
 
         static bool UserWantsLogging()

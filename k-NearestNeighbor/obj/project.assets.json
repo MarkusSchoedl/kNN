@@ -674,11 +674,11 @@
       "hideWarningsAndErrors": true
     },
     "restore": {
-      "projectUniqueName": "C:\\Users\\marku\\source\\repos\\k-NearestNeighbor\\k-NearestNeighbor\\k-NearestNeighbor.csproj",
+      "projectUniqueName": "C:\\Development\\kNN\\k-NearestNeighbor\\k-NearestNeighbor.csproj",
       "projectName": "k-NearestNeighbor",
-      "projectPath": "C:\\Users\\marku\\source\\repos\\k-NearestNeighbor\\k-NearestNeighbor\\k-NearestNeighbor.csproj",
+      "projectPath": "C:\\Development\\kNN\\k-NearestNeighbor\\k-NearestNeighbor.csproj",
       "packagesPath": "C:\\Users\\marku\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\marku\\source\\repos\\k-NearestNeighbor\\k-NearestNeighbor\\obj\\",
+      "outputPath": "C:\\Development\\kNN\\k-NearestNeighbor\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackagesFallback\\",
