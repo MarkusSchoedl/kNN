@@ -21,6 +21,9 @@ namespace k_NearestNeighbor
         // Key: Chunk-Id, Value: WineAttributes
         private Dictionary<int, List<WineAttributes>> _Chunks = new Dictionary<int, List<WineAttributes>>();
 
+        //Key of Dict: current Wine; Sorted List Key: Distance, Value: Wine to that distance
+        private Dictionary<WineAttributes, SortedList<double, int>> _NearestNeighbor = new Dictionary<WineAttributes, SortedList<double, int>>();
+
         public enum CalculationMethod
         {
             EuclideanDistance = 1,
@@ -56,7 +59,7 @@ namespace k_NearestNeighbor
         /// Starts the k-NearestNeighbor Algorithm using the EuclideanDistance Method.
         /// </summary>
         /// <param name="k">The number of Chunks to use.</param>
-        public void Start_kNN(int k, CalculationMethod method = CalculationMethod.EuclideanDistance)
+        public void Start_kNN(int k, int kfold, CalculationMethod method = CalculationMethod.EuclideanDistance)
         {
             DistanceCalculator calculationMethod = new EuclideanDistanceStrategy();
             if (method == CalculationMethod.ManhattanDistance)
@@ -71,7 +74,7 @@ namespace k_NearestNeighbor
             Console.WriteLine("Calculating with method: {0} ...", method.ToString());
 
             #region Calculate Chunk Size
-            SplitDataIntoChunks(k);
+            SplitDataIntoChunks(kfold);
             #endregion
 
             #region Heuristic
@@ -90,12 +93,16 @@ namespace k_NearestNeighbor
                     WineAttributes nearestNeighbor = null;
                     double lowestDistance = double.MaxValue;
 
+                    _NearestNeighbor.Add(unknownWine, new SortedList<double, int>(new DuplicateKeyComparer<double>()));
+
                     // Get NearestNeighbor
                     foreach (var nnChunk in _Chunks.Where(x => testingChunk.Key != x.Key))
                     {
                         foreach (var knownWine in nnChunk.Value)
                         {
                             double currDistance = calculationMethod.GetDistance(knownWine, unknownWine);
+
+                            _NearestNeighbor[unknownWine].Add(currDistance, knownWine.Quality);
 
                             if (currDistance < lowestDistance)
                             {
@@ -105,15 +112,16 @@ namespace k_NearestNeighbor
                         }
                     }
 
+                    // Get most occuring quality 
+                    var w = _NearestNeighbor[unknownWine].Values.Take(k);
+                    var dict = w.ToLookup(x => x);
+                    var maxCount = dict.Max(x => x.Count());
+                    int mostQuality = dict.Where(x => x.Count() == maxCount).Select(x => x.Key).FirstOrDefault();
+                    
                     // Add the current guess to the result
-                    confusionMatrix[unknownWine.Quality, nearestNeighbor.Quality]++;
-
-                    if (_LoggingEnabled)
-                    {
-                        Console.WriteLine("Nearest Neighbor Distance: " + lowestDistance + "\nUnknown: " + unknownWine.ToString() + "\nKnown  : " + nearestNeighbor.ToString());
-                    }
-
-                    if (nearestNeighbor.Quality != unknownWine.Quality)
+                    confusionMatrix[unknownWine.Quality, mostQuality]++;
+                    
+                    if (nearestNeighbor.Quality != mostQuality)
                     {
                         wrongWines++;
                     }
@@ -349,6 +357,26 @@ namespace k_NearestNeighbor
         //}
     }
 
+    #region IComparator
+    /// <summary>
+    /// Comparer for comparing two keys, handling equality as beeing greater
+    /// Use this Comparer e.g. with SortedLists or SortedDictionaries, that don't allow duplicate keys
+    /// </summary>
+    /// <typeparam name="TKey"></typeparam>
+    public class DuplicateKeyComparer<TKey> : IComparer<TKey> where TKey : IComparable
+    {
+        public int Compare(TKey x, TKey y)
+        {
+            int result = x.CompareTo(y);
+
+            if (result == 0)
+                return 1;   // Handle equality as beeing greater
+            else
+                return result;
+        }
+    }
+    #endregion
+
     internal class WineAttributes
     {
         public float FixedAcidity = 1.0f;
@@ -364,7 +392,7 @@ namespace k_NearestNeighbor
         public float Alcohol = 1.0f;
 
         public int Quality = 0;
-        
+
         public bool Equals(WineAttributes y)
         {
             return Alcohol == y.Alcohol &&
@@ -392,7 +420,7 @@ namespace k_NearestNeighbor
     {
         public abstract double GetDistance(WineAttributes wine1, WineAttributes wine2);
     }
-    
+
     class EuclideanDistanceStrategy : DistanceCalculator
     {
         public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
@@ -479,6 +507,5 @@ namespace k_NearestNeighbor
             return Math.Sqrt(result);
         }
     }
-
     #endregion
 }

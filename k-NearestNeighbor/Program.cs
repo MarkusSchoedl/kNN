@@ -16,8 +16,9 @@ namespace k_NearestNeighbor
                 }
 
                 WhiteWine_kNN.CalculationMethod method = SelectDistanceMethod();
+                int k = SelectK();
 
-                kNN.Start_kNN(13, method);
+                kNN.Start_kNN(k: 100, kfold: 1000, method: method);
             }
             else
             {
@@ -47,9 +48,9 @@ namespace k_NearestNeighbor
                     try
                     {
                         Console.Clear();
-                        return (WhiteWine_kNN.CalculationMethod)Enum.GetValues(typeof(WhiteWine_kNN.CalculationMethod)).GetValue(input-1);
+                        return (WhiteWine_kNN.CalculationMethod)Enum.GetValues(typeof(WhiteWine_kNN.CalculationMethod)).GetValue(input - 1);
                     }
-                    catch(IndexOutOfRangeException)
+                    catch (IndexOutOfRangeException)
                     {
                         continue;
                     }
@@ -93,6 +94,30 @@ namespace k_NearestNeighbor
 
             Console.Clear();
             return logging;
+        }
+
+        static int SelectK()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Choose k:\n");
+
+                string sinput = Console.ReadLine();
+                int input = 0;
+                if (int.TryParse(sinput, out input))
+                {
+                    try
+                    {
+                        Console.Clear();
+                        return input;
+                    }
+                    catch (IndexOutOfRangeException)
+                    {
+                        continue;
+                    }
+                }
+            }
         }
     }
 }
