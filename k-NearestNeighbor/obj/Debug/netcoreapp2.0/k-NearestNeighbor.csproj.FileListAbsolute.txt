@@ -20,3 +20,5 @@ C:\Development\kNN\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.A
 C:\Development\kNN\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.AssemblyInfo.cs
 C:\Development\kNN\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.dll
 C:\Development\kNN\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.pdb
+C:\Development\kNN\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.Properties.Resources.resources
+C:\Development\kNN\k-NearestNeighbor\obj\Debug\netcoreapp2.0\k-NearestNeighbor.csproj.GenerateResource.cache

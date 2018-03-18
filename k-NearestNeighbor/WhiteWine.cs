@@ -16,13 +16,13 @@ namespace k_NearestNeighbor
         // Key: Each Wine Attributes, Value: Wine Quality
         private List<WineAttributes> _AllWines = new List<WineAttributes>();
         private Dictionary<int, List<WineAttributes>> _TotalWineData = new Dictionary<int, List<WineAttributes>>();
-        private Dictionary<int, List<WineAttributes>> _DoubleWineData = new Dictionary<int, List<WineAttributes>>();
+        private Dictionary<int, List<WineAttributes>> _floatWineData = new Dictionary<int, List<WineAttributes>>();
 
         // Key: Chunk-Id, Value: WineAttributes
         private Dictionary<int, List<WineAttributes>> _Chunks = new Dictionary<int, List<WineAttributes>>();
 
         //Key of Dict: current Wine; Sorted List Key: Distance, Value: Wine to that distance
-        private Dictionary<WineAttributes, SortedList<double, int>> _NearestNeighbor = new Dictionary<WineAttributes, SortedList<double, int>>();
+        private SortedList<float, int> _NearestNeighbor = new SortedList<float, int>();
 
         public enum CalculationMethod
         {
@@ -41,7 +41,7 @@ namespace k_NearestNeighbor
             for (int i = 0; i <= 10; i++)
             {
                 _TotalWineData.Add(i, new List<WineAttributes>());
-                _DoubleWineData.Add(i, new List<WineAttributes>());
+                _floatWineData.Add(i, new List<WineAttributes>());
             }
         }
         #endregion
@@ -78,8 +78,6 @@ namespace k_NearestNeighbor
             #endregion
 
             #region Heuristic
-            int wrongWines = 0;
-            int rightWines = 0;
 
             // The Result
             int[,] confusionMatrix = new int[10, 10];
@@ -90,54 +88,35 @@ namespace k_NearestNeighbor
             {
                 foreach (var unknownWine in testingChunk.Value) // For each wine, which is not part of the current Chunk
                 {
-                    WineAttributes nearestNeighbor = null;
-                    double lowestDistance = double.MaxValue;
-
-                    _NearestNeighbor.Add(unknownWine, new SortedList<double, int>(new DuplicateKeyComparer<double>()));
+                    _NearestNeighbor = new SortedList<float, int>(new DuplicateKeyComparer<float>());
 
                     // Get NearestNeighbor
                     foreach (var nnChunk in _Chunks.Where(x => testingChunk.Key != x.Key))
                     {
                         foreach (var knownWine in nnChunk.Value)
                         {
-                            double currDistance = calculationMethod.GetDistance(knownWine, unknownWine);
+                            float currDistance = calculationMethod.GetDistance(knownWine, unknownWine);
 
-                            _NearestNeighbor[unknownWine].Add(currDistance, knownWine.Quality);
-
-                            if (currDistance < lowestDistance)
-                            {
-                                lowestDistance = currDistance;
-                                nearestNeighbor = knownWine;
-                            }
+                            _NearestNeighbor.Add(currDistance, knownWine.Quality);
                         }
                     }
 
                     // Get most occuring quality 
-                    var w = _NearestNeighbor[unknownWine].Values.Take(k);
+                    var w = _NearestNeighbor.Values.Take(k);
                     var dict = w.ToLookup(x => x);
                     var maxCount = dict.Max(x => x.Count());
                     int mostQuality = dict.Where(x => x.Count() == maxCount).Select(x => x.Key).FirstOrDefault();
-                    
+
                     // Add the current guess to the result
                     confusionMatrix[unknownWine.Quality, mostQuality]++;
-                    
-                    if (nearestNeighbor.Quality != mostQuality)
-                    {
-                        wrongWines++;
-                    }
-                    else
-                    {
-                        rightWines++;
-                    }
-
                 }
             }
 
             stopWatch.Stop();
             TimeSpan ts = stopWatch.Elapsed;
-            string elapsedTime = String.Format("{0:00}.{1:00}", ts.Seconds, ts.Milliseconds / 10);
+            string elapsedTime = String.Format("{0} Minutes, {1} Seconds, {2} ms", ts.Minutes, ts.Seconds, ts.Milliseconds);
 
-            PrintResult(confusionMatrix, rightWines, wrongWines, elapsedTime);
+            PrintResult(confusionMatrix, elapsedTime);
 
             #endregion
         }
@@ -149,8 +128,10 @@ namespace k_NearestNeighbor
         /// <param name="rightWines">The amount of right wines</param>
         /// <param name="wrongWines">The amount of wrong wines</param>
         /// <param name="elapsedTime">The elapsed Time as string.</param>
-        private void PrintResult(int[,] confusionMatrix, int rightWines, int wrongWines, string elapsedTime)
+        private void PrintResult(int[,] confusionMatrix, string elapsedTime)
         {
+            int rightWines = 0, wrongWines = 0;
+
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\n\nElapsed Time: " + elapsedTime + " sec\n\n");
 
@@ -180,10 +161,12 @@ namespace k_NearestNeighbor
                     if (i == j)
                     {
                         Console.ForegroundColor = ConsoleColor.Magenta;
+                        rightWines += confusionMatrix[i, j];
                     }
                     else if (confusionMatrix[i, j] != 0)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkGray;
+                        wrongWines += confusionMatrix[i, j];
                     }
                     else
                     {
@@ -209,7 +192,6 @@ namespace k_NearestNeighbor
         /// <returns>True if all Data was split, False otherwise.</returns>
         private bool SplitDataIntoChunks(int k)
         {
-
             for (int chunk = 0; chunk < k; chunk++)
             {
                 _Chunks.Add(chunk, new List<WineAttributes>());
@@ -294,7 +276,7 @@ namespace k_NearestNeighbor
                         }
                         else
                         {
-                            _DoubleWineData[attr.Quality].Add(attr);
+                            _floatWineData[attr.Quality].Add(attr);
                         }
                     }
                 }
@@ -307,7 +289,7 @@ namespace k_NearestNeighbor
             if (_LoggingEnabled)
             {
                 Console.WriteLine("Found " + _TotalWineData.Values.Sum(list => list.Count) + " unique wine datasets.");
-                Console.WriteLine("Found " + _DoubleWineData.Values.Sum(list => list.Count) + " redundant wine datasets.\n");
+                Console.WriteLine("Found " + _floatWineData.Values.Sum(list => list.Count) + " redundant wine datasets.\n");
 
                 foreach (var dataSet in _TotalWineData.Where(x => x.Value.Count() > 0))
                 {
@@ -346,15 +328,6 @@ namespace k_NearestNeighbor
             return attribute;
         }
         #endregion
-
-        // Erased because TOO SLOW
-        //private double CalculateDistance(WineAttributes guessWine, WineAttributes learnWine)
-        //{
-        //    foreach (var field in typeof(WineAttributes).GetFields())
-        //    {
-        //        result += Math.Pow((float)field.GetValue(guessWine) - (float)field.GetValue(learnWine), 2);
-        //    }
-        //}
     }
 
     #region IComparator
@@ -418,15 +391,15 @@ namespace k_NearestNeighbor
     #region StrategyDesignPattern
     abstract class DistanceCalculator
     {
-        public abstract double GetDistance(WineAttributes wine1, WineAttributes wine2);
+        public abstract float GetDistance(WineAttributes wine1, WineAttributes wine2);
     }
 
     class EuclideanDistanceStrategy : DistanceCalculator
     {
-        public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
+        public override float GetDistance(WineAttributes wine1, WineAttributes wine2)
         {
-            double result = 0;
-            double temp = 0;
+            float result = 0;
+            float temp = 0;
 
             temp = wine1.Alcohol - wine2.Alcohol;
             result = temp * temp;
@@ -451,15 +424,15 @@ namespace k_NearestNeighbor
             temp = wine1.VolatileAcidity - wine2.VolatileAcidity;
             result += temp * temp;
 
-            return Math.Sqrt(result);
+            return (float)Math.Sqrt(result);
         }
     }
 
     class ManhattanDistanceStrategy : DistanceCalculator
     {
-        public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
+        public override float GetDistance(WineAttributes wine1, WineAttributes wine2)
         {
-            double result = 0;
+            float result = 0;
 
             result += Math.Abs(wine1.Alcohol - wine2.Alcohol);
             result += Math.Abs(wine1.Chlorides - wine2.Chlorides);
@@ -479,7 +452,7 @@ namespace k_NearestNeighbor
 
     class CorrectedEuclideanStrategy : DistanceCalculator
     {
-        public override double GetDistance(WineAttributes wine1, WineAttributes wine2)
+        public override float GetDistance(WineAttributes wine1, WineAttributes wine2)
         {
             // Removed following parameters:
             // Residual Sugar
@@ -488,8 +461,8 @@ namespace k_NearestNeighbor
             // Sulphates
             // Citric Acid
 
-            double result = 0;
-            double temp = 0;
+            float result = 0;
+            float temp = 0;
 
             temp = wine1.Alcohol - wine2.Alcohol;
             result += temp * temp;
@@ -504,7 +477,7 @@ namespace k_NearestNeighbor
             temp = wine1.VolatileAcidity - wine2.VolatileAcidity;
             result += temp * temp;
 
-            return Math.Sqrt(result);
+            return (float)Math.Sqrt(result);
         }
     }
     #endregion

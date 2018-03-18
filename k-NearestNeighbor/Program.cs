@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 
 namespace k_NearestNeighbor
@@ -8,7 +9,7 @@ namespace k_NearestNeighbor
         static void Main(string[] args)
         {
             WhiteWine_kNN kNN = new WhiteWine_kNN();
-            if (kNN.ReadWineData(@"Data\winequality-white.csv"))
+            if (kNN.ReadWineData(Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName, @"Data\WhiteWine100k.csv")))  //Data\winequality-white.csv
             {
                 if (UserWantsLogging())
                 {
@@ -18,7 +19,7 @@ namespace k_NearestNeighbor
                 WhiteWine_kNN.CalculationMethod method = SelectDistanceMethod();
                 int k = SelectK();
 
-                kNN.Start_kNN(k: 100, kfold: 1000, method: method);
+                kNN.Start_kNN(k: k, kfold: 10, method: method);
             }
             else
             {
