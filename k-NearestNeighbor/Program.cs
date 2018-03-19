@@ -8,15 +8,19 @@ namespace k_NearestNeighbor
     {
         static void Main(string[] args)
         {
-            WhiteWine_kNN kNN = new WhiteWine_kNN();
-            if (kNN.ReadWineData(Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName, @"Data\WhiteWine100k.csv")))  //Data\winequality-white.csv
+            //string filename = @"Data\winequality-white.csv";
+            //string filename = @"Data\WhiteWine10k.csv";
+            string filename = @"Data\iris.csv";
+
+            kNN kNN = new kNN();
+            if (kNN.ParseData(Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName, filename)))  //Data\WhiteWine10k.csv
             {
                 if (UserWantsLogging())
                 {
                     kNN.EnableLogging();
                 }
 
-                WhiteWine_kNN.CalculationMethod method = SelectDistanceMethod();
+                kNN.CalculationMethod method = SelectDistanceMethod();
                 int k = SelectK();
 
                 kNN.Start_kNN(k: k, kfold: 10, method: method);
@@ -28,7 +32,7 @@ namespace k_NearestNeighbor
             Console.ReadKey();
         }
 
-        static WhiteWine_kNN.CalculationMethod SelectDistanceMethod()
+        static kNN.CalculationMethod SelectDistanceMethod()
         {
             while (true)
             {
@@ -36,7 +40,7 @@ namespace k_NearestNeighbor
                 Console.WriteLine("Choose a distance calculation method:\n");
 
                 int i = 1;
-                foreach (var method in typeof(WhiteWine_kNN.CalculationMethod).GetEnumNames())
+                foreach (var method in typeof(kNN.CalculationMethod).GetEnumNames())
                 {
                     Console.WriteLine("{0}: {1}", i, method);
                     i++;
@@ -49,7 +53,7 @@ namespace k_NearestNeighbor
                     try
                     {
                         Console.Clear();
-                        return (WhiteWine_kNN.CalculationMethod)Enum.GetValues(typeof(WhiteWine_kNN.CalculationMethod)).GetValue(input - 1);
+                        return (kNN.CalculationMethod)Enum.GetValues(typeof(kNN.CalculationMethod)).GetValue(input - 1);
                     }
                     catch (IndexOutOfRangeException)
                     {
